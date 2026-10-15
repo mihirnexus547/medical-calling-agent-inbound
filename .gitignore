@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environment
+inbound_agent/
+venv/
+env/
+.venv/
+.env/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+*.log.*
+
+# Database
+*.sqlite3
+*.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LangSmith / LangChain cache
+.langchain/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/

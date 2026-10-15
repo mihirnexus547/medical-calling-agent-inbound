@@ -1,0 +1,7 @@
+langchain
+langchain_core
+langchain_groq
+python-dotenv
+psycopg2
+langgraph
+pyscreeze
