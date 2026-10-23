@@ -96,7 +96,9 @@ load_dotenv()
 
 checkpointer = InMemorySaver()
 
-receptionist_agent = create_agent(
+import re
+
+_raw_receptionist_agent = create_agent(
     model=ChatGroq(model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0.1),
     system_prompt=(
         f"{get_calendar_context()}\n\n"
@@ -106,14 +108,15 @@ receptionist_agent = create_agent(
         "If not, use insert_patient to collect name, email, and phone number, and save them into the database. "
         "If the user wants to update name, email, or phone number, use update_patient_records tool. "
         "Once a patient is registered or verified and you have their patient_id:\n"
-        "- For doctors, specializations, slots, or booking/viewing/rescheduling/canceling appointments (including responses to payment preference questions such as 'right away', 'now', 'pay now', 'after that', 'later', 'at the clinic' during booking), "
-        "IMMEDIATELY call handoff_to_appointment_agent with their patient_id and full request details.\n"
+        "- MANDATORY ROUTING FOR APPOINTMENTS & PAYMENT PREFERENCE: For doctors, specializations, slots, or booking/viewing/rescheduling/canceling appointments — AND whenever the patient answers a payment preference question (such as 'right away', 'now', 'pay now', 'pay online', 'after that', 'later', 'at the clinic' during booking) — you MUST call handoff_to_appointment_agent with their patient_id and full request details. DO NOT call billing agent during a booking in progress!\n"
+        "- ONLY call handoff_to_billing if the user explicitly asks to check the payment status of an already-booked past appointment (e.g. 'is my payment done?', 'payment status') or asks for an invoice for a completed visit.\n"
         "- For checking insurance coverage, eligibility, or copays (or if the user asks to BOTH check insurance and get a bill), "
         "IMMEDIATELY call handoff_to_insurance with their patient_id and full request details (include appointment_id and service_code if mentioned).\n"
-        "- If the user asks to generate or view a bill/invoice, or asks to check payment status (e.g. 'is my payment done?', 'payment status') for an existing appointment, "
-        "IMMEDIATELY call handoff_to_billing with their patient_id and full request details.\n"
         "IMPORTANT: All handoff tools are synchronous tool calls that return the complete answer. "
-        "When a handoff tool returns, relay its message directly, cleanly, and concisely to the user. Do not repeat words, loop, or stutter. "
+        "When a handoff tool returns, relay its message directly to the user. "
+        "CRITICAL PAYMENT LINK MANDATE: If any tool response contains a payment link or URL (such as https://checkout.stripe.com/...), "
+        "you MUST include the complete, exact payment URL in your final message to the user. "
+        "NEVER omit the payment URL, and NEVER say 'sent via SMS' without showing the full clickable payment link directly in your response! "
         "Never call more than one tool in a single turn. "
         "Never share the details of another person via a mobile number."
     ),
@@ -128,5 +131,35 @@ receptionist_agent = create_agent(
     ],
     checkpointer=checkpointer,
 )
+
+
+class SafeReceptionistAgent:
+    """Wrapper that guarantees any Stripe payment URL generated in a turn is preserved in the final message."""
+
+    def __init__(self, raw_agent):
+        self._raw_agent = raw_agent
+
+    def invoke(self, *args, **kwargs):
+        res = self._raw_agent.invoke(*args, **kwargs)
+        if isinstance(res, dict) and "messages" in res and res["messages"]:
+            last_msg = res["messages"][-1]
+            last_content = getattr(last_msg, "content", "") or ""
+            stripe_url = None
+            for m in reversed(res["messages"]):
+                content_str = str(getattr(m, "content", "") or "")
+                match = re.search(r"https://checkout\.stripe\.com[^\s\)\"'>]+", content_str)
+                if match:
+                    stripe_url = match.group(0)
+                    break
+            if stripe_url and stripe_url not in last_content:
+                last_msg.content = f"{last_content}\n\n👉 **Payment Link:** {stripe_url}"
+        return res
+
+    def __getattr__(self, name):
+        return getattr(self._raw_agent, name)
+
+
+receptionist_agent = SafeReceptionistAgent(_raw_receptionist_agent)
+
 
 thread_config = {"configurable": {"thread_id": "session1234"}}

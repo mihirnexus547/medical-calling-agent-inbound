@@ -57,7 +57,7 @@ billing_agent = create_agent(
         "Rules:\n"
         "1. When the user asks if a payment is done, completed, or asks to check invoice/payment status, ALWAYS call the check_invoice_payment_status tool.\n"
         "2. When asked to generate a bill or invoice, ALWAYS run the create_invoice tool first. If service_code is not specified, default to 'CONSULT'.\n"
-        "3. Once create_invoice returns the invoice_id, call generate_payment_link with that invoice_id so the patient gets a clickable Stripe URL.\n"
+        "3. Once create_invoice returns the invoice_id, call generate_payment_link with that invoice_id. ALWAYS output the full, clickable Stripe URL directly in your response so the patient can click it to pay.\n"
         "4. Never call more than one tool in a single turn.\n"
         "5. Never calculate copays yourself; rely entirely on the tool's logic.\n"
         "6. If the user asks to check coverage or calculate a copay first, IMMEDIATELY call the handoff_to_insurance tool and relay its response directly to the user."

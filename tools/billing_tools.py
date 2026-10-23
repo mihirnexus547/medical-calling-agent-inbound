@@ -174,9 +174,10 @@ def generate_payment_link(invoice_id: int, delivery_channel: str = "sms") -> str
         )
 
         return (
-            f"Payment link generated (Payment ID: {payment_id})! "
-            f"Amount due: {patient_amount_cents} cents. "
-            f"Pay here: {payment_url}"
+            f"Payment link generated successfully!\n"
+            f"Amount Due: ${patient_amount_cents / 100:.2f}\n"
+            f"Payment Link: {payment_url}\n"
+            f"INSTRUCTION: You must provide this exact Payment Link URL directly to the user in your response so they can click and complete payment."
         )
 
     except Exception as e:
