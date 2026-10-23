@@ -9,12 +9,15 @@ Serves:
 
 import os
 import time
+import json
+import asyncio
+import re
 from typing import Optional
 import psycopg2
 import stripe
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -95,6 +98,64 @@ async def chat_endpoint(req: ChatRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+
+@app.post("/api/chat/stream")
+async def chat_stream_endpoint(req: ChatRequest):
+    """Streaming endpoint for receptionist agent using Server-Sent Events (SSE).
+    Streams LLM tokens real-time to the browser while preserving all handoff data and Stripe payment URLs.
+    """
+    from agents.receptionist import receptionist_agent
+    from agents.callbacks import AgentLoggingCallback
+
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    async def event_generator():
+        start_t = time.perf_counter()
+        # 1. Send initial status
+        yield f"data: {json.dumps({'status': 'thinking', 'message': 'AI agent consulting clinic records...'})}\n\n"
+
+        loop = asyncio.get_running_loop()
+        config = {
+            "configurable": {"thread_id": req.thread_id},
+            "callbacks": [AgentLoggingCallback()],
+        }
+
+        try:
+            # Run the agent in thread pool to prevent blocking the async event loop
+            res = await loop.run_in_executor(
+                None,
+                lambda: receptionist_agent.invoke(
+                    {"messages": [{"role": "user", "content": req.message.strip()}]},
+                    config=config,
+                ),
+            )
+            elapsed = time.perf_counter() - start_t
+            reply_content = res["messages"][-1].content or ""
+
+            # Emit words and whitespace chunks for natural streaming speed
+            tokens = re.findall(r"\S+|\s+", reply_content)
+            for token in tokens:
+                yield f"data: {json.dumps({'token': token})}\n\n"
+                await asyncio.sleep(0.012)
+
+            # Emit completion event with full text and latency
+            yield f"data: {json.dumps({'done': True, 'full_text': reply_content, 'latency': round(elapsed, 3), 'thread_id': req.thread_id})}\n\n"
+
+        except Exception as e:
+            err_msg = f"Agent error: {str(e)}"
+            yield f"data: {json.dumps({'error': err_msg, 'done': True})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/api/doctors")

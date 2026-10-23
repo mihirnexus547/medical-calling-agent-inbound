@@ -9,6 +9,7 @@ Includes:
 
 import os
 import time
+import re
 from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 import pandas as pd
@@ -286,7 +287,12 @@ with tab_chat:
                         elapsed = time.perf_counter() - start_t
                         bot_reply = res["messages"][-1].content
 
-                        st.markdown(bot_reply)
+                        def stream_tokens(text: str):
+                            for tok in re.findall(r"\S+|\s+", text):
+                                yield tok
+                                time.sleep(0.01)
+
+                        st.write_stream(stream_tokens(bot_reply))
                         st.caption(f"⏱️ Response latency: {elapsed:.2f}s | Thread: {st.session_state.session_thread_id}")
 
                         st.session_state.chat_messages.append({"role": "assistant", "content": bot_reply})

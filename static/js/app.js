@@ -170,24 +170,28 @@ async function handleSendMessage() {
   state.isLoading = true;
   elements.chatSendBtn.disabled = true;
 
-  // Show Typing Indicator
-  const typingRow = document.createElement('div');
-  typingRow.className = 'msg-row bot typing-row';
-  typingRow.innerHTML = `
-    <div class="msg-avatar">🩺</div>
-    <div class="msg-bubble typing-indicator">
+  // Create Bot Message Row with live typing placeholder
+  const botRow = document.createElement('div');
+  botRow.className = 'msg-row bot';
+  const botAvatar = document.createElement('div');
+  botAvatar.className = 'msg-avatar';
+  botAvatar.textContent = '🩺';
+  const botBubble = document.createElement('div');
+  botBubble.className = 'msg-bubble';
+  botBubble.innerHTML = `
+    <div class="typing-indicator" style="padding: 4px 0;">
       <div class="typing-dot"></div>
       <div class="typing-dot"></div>
       <div class="typing-dot"></div>
     </div>
   `;
-  elements.chatMessages.appendChild(typingRow);
+  botRow.appendChild(botAvatar);
+  botRow.appendChild(botBubble);
+  elements.chatMessages.appendChild(botRow);
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 
-  const startTime = performance.now();
-
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -196,23 +200,83 @@ async function handleSendMessage() {
       }),
     });
 
-    const data = await response.json();
-    typingRow.remove();
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || `Server status ${response.status}`);
+    }
 
-    if (response.ok && data.reply) {
-      appendMessage('bot', data.reply);
-    } else {
-      appendMessage('bot', `⚠️ Error: ${data.detail || 'Could not process request.'}`);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let accumulatedText = '';
+    let hasReceivedToken = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop(); // save remainder
+
+      for (const evt of events) {
+        const trimmed = evt.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6);
+        try {
+          const payload = JSON.parse(jsonStr);
+
+          if (payload.token) {
+            if (!hasReceivedToken) {
+              hasReceivedToken = true;
+              botBubble.innerHTML = '';
+            }
+            accumulatedText += payload.token;
+            botBubble.innerHTML = parseMarkdownPartial(accumulatedText);
+            elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+          }
+
+          if (payload.done) {
+            const finalMsg = payload.full_text || accumulatedText;
+            botBubble.innerHTML = parseMarkdownAndLinks(finalMsg);
+            if (payload.latency) {
+              const meta = document.createElement('div');
+              meta.className = 'msg-meta';
+              meta.style.cssText = 'font-size: 11px; opacity: 0.55; margin-top: 6px; text-align: right;';
+              meta.textContent = `⚡ Latency: ${payload.latency}s`;
+              botBubble.appendChild(meta);
+            }
+            elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+          }
+
+          if (payload.error) {
+            botBubble.innerHTML = `<p style="color: #f87171;">⚠️ ${payload.error}</p>`;
+          }
+        } catch (e) {
+          console.error("SSE parse error", e, jsonStr);
+        }
+      }
     }
   } catch (err) {
-    typingRow.remove();
-    appendMessage('bot', `⚠️ Network error: ${err.message}. Please check if server is running.`);
+    botBubble.innerHTML = `<p style="color: #f87171;">⚠️ Connection error: ${err.message}. Please check if server is running.</p>`;
   } finally {
     state.isLoading = false;
     elements.chatSendBtn.disabled = false;
     elements.chatInput.focus();
   }
 }
+
+function parseMarkdownPartial(text) {
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/\n/g, '<br>');
+  return `<p>${html}<span class="typing-cursor">▌</span></p>`;
+}
+
 
 function appendMessage(sender, text) {
   const row = document.createElement('div');

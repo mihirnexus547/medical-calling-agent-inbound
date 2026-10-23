@@ -12,6 +12,26 @@ if _ls_key:
     os.environ["LANGCHAIN_API_KEY"] = _ls_key
     os.environ["LANGSMITH_API_KEY"] = _ls_key
 
+def get_chat_llm(temperature: float = 0.1):
+    from langchain_groq import ChatGroq
+
+    primary_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    fallback_model = os.getenv("GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b")
+    max_tokens = int(os.getenv("GROQ_MAX_TOKENS", 1024))
+
+    primary = ChatGroq(
+        model_name=primary_model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    fallback = ChatGroq(
+        model_name=fallback_model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    return primary.with_fallbacks([fallback])
+
+
 from .callbacks import AgentLoggingCallback
 from .receptionist import receptionist_agent, thread_config, handoff_to_appointment_agent
 from .appointment import appointment_agent
@@ -19,6 +39,7 @@ from .insurance import insurance_agent, handoff_to_insurance
 from .billing import billing_agent, handoff_to_billing
 
 __all__ = [
+    "get_chat_llm",
     "AgentLoggingCallback",
     "receptionist_agent",
     "thread_config",

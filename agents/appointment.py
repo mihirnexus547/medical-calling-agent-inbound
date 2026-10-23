@@ -22,13 +22,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from agents import get_chat_llm
+
 appointment_checkpointer = InMemorySaver()
 
 appointment_agent = create_agent(
-    model=ChatGroq(
-        model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
-        temperature=0.1,
-    ),
+    model=get_chat_llm(temperature=0.1),
     system_prompt=(
         f"{get_calendar_context()}\n\n"
         "You are an appointment scheduling agent. "
