@@ -50,7 +50,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 billing_agent = create_agent(
-    model=ChatGroq(model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0),
+    model=ChatGroq(model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0.1),
     system_prompt=(
         "You are the Billing Agent, a specialized AI assistant.\n"
         "Your ONLY job is to manage invoices, generate payment links, and check payment status for patients.\n"

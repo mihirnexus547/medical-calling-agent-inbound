@@ -73,6 +73,12 @@ def handoff_to_appointment_agent(patient_id: int, request_details: str) -> str:
         return "Failed to process appointment request with the appointment agent. Please try again."
 
 
+@tool
+def handful_to_appointment_agent(patient_id: int, request_details: str) -> str:
+    """Alias for handoff_to_appointment_agent (for appointment bookings, slots, doctors, cancellations)."""
+    return handoff_to_appointment_agent.invoke({"patient_id": patient_id, "request_details": request_details})
+
+
 def _get_handoff_to_insurance():
     from agents.insurance import handoff_to_insurance
     return handoff_to_insurance
@@ -91,7 +97,7 @@ load_dotenv()
 checkpointer = InMemorySaver()
 
 receptionist_agent = create_agent(
-    model=ChatGroq(model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0),
+    model=ChatGroq(model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0.1),
     system_prompt=(
         f"{get_calendar_context()}\n\n"
         "You are a receptionist agent. "
@@ -106,8 +112,8 @@ receptionist_agent = create_agent(
         "IMMEDIATELY call handoff_to_insurance with their patient_id and full request details (include appointment_id and service_code if mentioned).\n"
         "- If the user asks to generate or view a bill/invoice, or asks to check payment status (e.g. 'is my payment done?', 'payment status') for an existing appointment, "
         "IMMEDIATELY call handoff_to_billing with their patient_id and full request details.\n"
-        "IMPORTANT: All handoff tools are synchronous tool calls that return the complete answer right now. "
-        "Do NOT say 'I have forwarded your request'. Simply relay the tool's returned response directly to the user. "
+        "IMPORTANT: All handoff tools are synchronous tool calls that return the complete answer. "
+        "When a handoff tool returns, relay its message directly, cleanly, and concisely to the user. Do not repeat words, loop, or stutter. "
         "Never call more than one tool in a single turn. "
         "Never share the details of another person via a mobile number."
     ),
@@ -116,6 +122,7 @@ receptionist_agent = create_agent(
         insert_patient,
         update_patient_records,
         handoff_to_appointment_agent,
+        handful_to_appointment_agent,
         _get_handoff_to_insurance(),
         _get_handoff_to_billing(),
     ],

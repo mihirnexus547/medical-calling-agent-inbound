@@ -27,7 +27,7 @@ appointment_checkpointer = InMemorySaver()
 appointment_agent = create_agent(
     model=ChatGroq(
         model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
-        temperature=0,
+        temperature=0.1,
     ),
     system_prompt=(
         f"{get_calendar_context()}\n\n"
