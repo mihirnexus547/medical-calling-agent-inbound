@@ -105,10 +105,10 @@ flowchart TB
 
 | Agent Name | Scope & Responsibilities | Tools Used | State / Checkpointer |
 | :--- | :--- | :--- | :--- |
-| **Receptionist Agent** (Router) | Patient verification by phone, registration, updating records, top-level intent routing | `check_patients_exist`, `insert_patient`, `update_patient_records`, `handoff_to_appointment_agent`, `handoff_to_insurance`, `handoff_to_billing` | `InMemorySaver` (thread: `session1234` or UI session) |
-| **Appointment Agent** | Slot availability, calendar date math, booking, rescheduling, cancellations, **payment preference gatekeeping** | `resolve_relative_date`, `list_doctors_and_specializations`, `check_available_slots`, `book_appointment`, `get_patient_appointments`, `cancel_appointment`, `reschedule_appointment`, `create_invoice`, `generate_payment_link` | `InMemorySaver` (thread: `appt_patient_{id}`) |
-| **Insurance Agent** | Verification of patient insurance policy, service coverage percentage, copay amount, deductible status | `check_insurance_eligibility` | Stateless / per handoff |
-| **Billing Agent** | Invoice generation, payment link dispatch, real-time payment status checks | `create_invoice`, `generate_payment_link`, `check_invoice_payment_status` | Stateless / per handoff |
+| **Receptionist Agent** (Router) | Patient verification by phone, registration, updating records, top-level intent routing | `check_patients_exist`, `insert_patient`, `update_patient_records`, `handoff_to_appointment_agent`, `handoff_to_insurance`, `handoff_to_billing` | `PostgresSaver` (thread: `thread_{patient_id}_{uuid}` in PostgreSQL `patient_db`) |
+| **Appointment Agent** | Slot availability, calendar date math, booking, rescheduling, cancellations, **fee quotation & confirmation** | `resolve_relative_date`, `list_doctors_and_specializations`, `check_available_slots`, `book_appointment`, `get_patient_appointments`, `cancel_appointment`, `reschedule_appointment`, `create_invoice`, `generate_payment_link`, `check_consultation_fee` | `PostgresSaver` (thread: `appt_patient_{id}`) |
+| **Insurance Agent** | Verification of patient insurance policy, service coverage percentage, copay amount, deductible status | `check_insurance_eligibility` | `PostgresSaver` |
+| **Billing Agent** | Invoice generation, payment link dispatch, real-time payment status checks | `create_invoice`, `generate_payment_link`, `check_invoice_payment_status` | `PostgresSaver` |
 
 ---
 

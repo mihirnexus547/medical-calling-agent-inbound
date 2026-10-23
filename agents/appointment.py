@@ -1,9 +1,6 @@
 """Appointment scheduling agent definition with integrated payment preference flow."""
 
 from langchain.agents import create_agent
-from langchain_groq import ChatGroq
-from langgraph.checkpoint.memory import InMemorySaver
-
 from tools import (
     resolve_relative_date,
     list_doctors_and_specializations,
@@ -24,8 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from agents import get_chat_llm
-
-appointment_checkpointer = InMemorySaver()
+from agents.checkpoint import postgres_checkpointer as appointment_checkpointer
 
 appointment_agent = create_agent(
     model=get_chat_llm(temperature=0.1),

@@ -12,5 +12,6 @@ conn = psycopg2.connect(
     host="localhost",
     port="5432",
 )
+conn.autocommit = True
 
 cursor = conn.cursor()

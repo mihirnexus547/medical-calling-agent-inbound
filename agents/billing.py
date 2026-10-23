@@ -3,9 +3,6 @@
 import time
 from langchain.agents import create_agent
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
-from langgraph.checkpoint.memory import InMemorySaver
-
 from config import logger
 from tools.billing_tools import (
     create_invoice,
@@ -13,8 +10,7 @@ from tools.billing_tools import (
     check_invoice_payment_status,
 )
 from agents.callbacks import AgentLoggingCallback
-
-checkpointer = InMemorySaver()
+from agents.checkpoint import postgres_checkpointer as checkpointer
 
 
 @tool 

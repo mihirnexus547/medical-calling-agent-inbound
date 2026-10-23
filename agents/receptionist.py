@@ -5,8 +5,7 @@ from datetime import date
 
 from langchain.agents import create_agent
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
-from langgraph.checkpoint.memory import InMemorySaver
+from agents.checkpoint import postgres_checkpointer as checkpointer
 
 from config import logger
 from tools import (
@@ -93,8 +92,6 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-checkpointer = InMemorySaver()
 
 import re
 

@@ -48,8 +48,21 @@
         <div class="pulse-dot"></div>
         <span>AI Agent Online</span>
       </div>
-      <a href="http://localhost:8501" target="_blank" rel="noopener noreferrer" class="btn-secondary" title="Open Streamlit Staff Portal">
-        Open Streamlit UI ↗
+      
+      <!-- Patient Auth Buttons & Profile Badge -->
+      <div id="authNavContainer" style="display: flex; align-items: center; gap: 8px;">
+        <button class="btn-primary btn-sm" id="openAuthModalBtn">
+          <span>🔑 Patient Login</span>
+        </button>
+        <div class="user-profile-badge" id="userProfileBadge" style="display: none;">
+          <div class="user-avatar-mini">👤</div>
+          <span class="user-name" id="navUserName">Patient</span>
+          <button class="btn-logout" id="logoutBtn" title="Log Out">Sign Out</button>
+        </div>
+      </div>
+
+      <a href="http://localhost:8501" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-sm" title="Open Streamlit Staff Portal">
+        Streamlit UI ↗
       </a>
     </div>
   </header>
@@ -117,6 +130,31 @@
     <section class="view-section active" id="view-chat">
       <div class="chat-layout">
         
+        <!-- Left Sidebar: Consultations & Previous Chats -->
+        <aside class="conversations-sidebar" id="conversationsSidebar">
+          <div class="conv-sidebar-header">
+            <div class="conv-header-title">
+              <span class="conv-icon">💬</span>
+              <h4>Consultations</h4>
+            </div>
+            <button class="btn-new-chat" id="newChatSidebarBtn" title="Start new consultation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>+ New Chat</span>
+            </button>
+          </div>
+
+          <!-- Auth Status Prompt in Sidebar -->
+          <div class="conv-auth-status" id="convAuthStatus">
+            <span id="convAuthText">🔒 Guest Session</span>
+            <button class="link-btn" id="convLoginPromptBtn">Sign In</button>
+          </div>
+
+          <!-- List of Conversations -->
+          <div class="conversations-list" id="conversationsList">
+            <!-- Dynamically populated from /api/conversations -->
+          </div>
+        </aside>
+
         <!-- Chat Main Area -->
         <div class="chat-card">
           <div class="chat-card-header">
@@ -324,6 +362,68 @@
     <p>MediFlow AI Healthcare Practice Management • Built with FastAPI, LangGraph Multi-Agent, and Groq</p>
     <p style="margin-top: 6px;">Connected to PostgreSQL database <code>patient_db</code> • Stripe Test Mode Integrated</p>
   </footer>
+
+  <!-- Authentication Modal (Login / Sign Up) -->
+  <div class="modal-backdrop" id="authModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-brand">
+          <span style="font-size: 26px;">🩺</span>
+          <div>
+            <h3>MediFlow Patient Portal</h3>
+            <p>Access your medical consultations & appointments</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeAuthModalBtn">&times;</button>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tabLoginBtn" type="button">Sign In</button>
+        <button class="modal-tab" id="tabRegisterBtn" type="button">Create Account</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="e.g. john.doe@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+        </div>
+        <div class="auth-error-msg" id="loginError" style="display: none;"></div>
+        <button type="submit" class="btn-primary btn-block" id="loginSubmitBtn">
+          <span>Sign In &rarr;</span>
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" class="auth-form" style="display: none;">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" class="form-control" placeholder="e.g. Alice Testing" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" class="form-control" placeholder="e.g. alice@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="regPhone">Phone Number</label>
+          <input type="tel" id="regPhone" class="form-control" placeholder="e.g. 9876543210" required autocomplete="tel">
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password (6+ characters)</label>
+          <input type="password" id="regPassword" class="form-control" placeholder="Create a secure password" minlength="6" required autocomplete="new-password">
+        </div>
+        <div class="auth-error-msg" id="registerError" style="display: none;"></div>
+        <button type="submit" class="btn-primary btn-block" id="registerSubmitBtn">
+          <span>Create Account &rarr;</span>
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- Toast Notification -->
   <div class="toast" id="toast"></div>
