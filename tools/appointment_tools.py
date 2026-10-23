@@ -403,3 +403,47 @@ def reschedule_appointment(
             duration,
         )
         return "Failed to reschedule appointment. Please try again."
+
+
+@tool
+def check_consultation_fee(patient_id: int, service_code: str = "CONSULT") -> str:
+    """Check the exact consultation fee amount the patient is required to pay for their visit,
+    taking into account their active insurance policy coverage and copay/coinsurance if applicable.
+    Use this to quote the exact fee amount to the patient before asking for their booking confirmation.
+    """
+    start_time = time.perf_counter()
+    logger.info("Checking consultation fee: patient_id=%s service_code=%s", patient_id, service_code)
+    try:
+        query = """
+            SELECT ip.provider_name, ip.plan_id, sp.price_cents, cr.covered, cr.copay_cents, cr.coinsurance_percent
+            FROM insurance_policies ip
+            JOIN coverage_rules cr ON ip.plan_id = cr.plan_id
+            JOIN service_prices sp ON cr.service_code = sp.service_code
+            WHERE ip.patient_id = %s AND ip.is_active = 1 AND sp.service_code = %s;
+        """
+        cursor.execute(query, (patient_id, service_code))
+        row = cursor.fetchone()
+        if row:
+            provider, plan_id, base_price, covered, copay, coinsurance = row
+            if covered == 1:
+                actual_copay = min(copay, base_price)
+                patient_cents = actual_copay + ((base_price - actual_copay) * coinsurance // 100)
+                amount_str = f"${patient_cents / 100.0:.2f}"
+                duration = time.perf_counter() - start_time
+                logger.info("Fee checked with insurance: patient_id=%s amount=%s duration=%.3fs", patient_id, amount_str, duration)
+                return (
+                    f"Consultation Fee: {amount_str} (Covered under {provider} {plan_id}. "
+                    f"Base visit cost: ${base_price / 100.0:.2f}, insurance covers ${(base_price - patient_cents) / 100.0:.2f}, patient responsibility: {amount_str})."
+                )
+
+        cursor.execute("SELECT price_cents FROM service_prices WHERE service_code = %s;", (service_code,))
+        p_row = cursor.fetchone()
+        base_cents = p_row[0] if p_row else 15000
+        duration = time.perf_counter() - start_time
+        logger.info("Fee checked self-pay: patient_id=%s base_cents=%d duration=%.3fs", patient_id, base_cents, duration)
+        return f"Consultation Fee: ${base_cents / 100.0:.2f} (Standard self-pay rate)."
+    except Exception as e:
+        conn.rollback()
+        logger.exception("check_consultation_fee failed: %s", e)
+        return "Consultation Fee: $150.00 (Standard rate)."
+

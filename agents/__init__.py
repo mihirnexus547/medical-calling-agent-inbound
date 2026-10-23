@@ -23,6 +23,7 @@ def get_chat_llm(temperature: float = 0.1):
         model_name=primary_model,
         temperature=temperature,
         max_tokens=max_tokens,
+        max_retries=0,
     )
     fallback = ChatGroq(
         model_name=fallback_model,

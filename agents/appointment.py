@@ -15,6 +15,7 @@ from tools import (
     get_calendar_context,
     create_invoice,
     generate_payment_link,
+    check_consultation_fee,
 )
 
 import os
@@ -38,17 +39,26 @@ appointment_agent = create_agent(
         "ALWAYS refer to the calendar reference above or call resolve_relative_date to get the exact YYYY-MM-DD date and weekday. "
         "Never guess or hallucinate calendar calculations.\n"
         "- DONT book appointment immediately without user selecting a slot; ask for a particular date and time from the available slots.\n"
-        "- MANDATORY PAYMENT PREFERENCE & BOOKING RULE:\n"
-        "  1. When a user chooses a slot to book, DO NOT complete the booking until you ask for their payment preference: "
-        "     'I can book that for you with Dr. [Doctor] on [Date] at [Time]. Would you like to complete the payment right away, or after that (at the clinic)?'\n"
-        "  2. IF THE USER CHOOSES 'RIGHT AWAY' / 'NOW': "
-        "     Call book_appointment to book the appointment. Then call create_invoice (service_code 'CONSULT'), and then call generate_payment_link with that invoice_id. "
-        "     Confirm that the appointment is booked and ALWAYS output the full payment link in this exact format: "
-        "     'Please complete your payment here: [paste the exact URL returned by generate_payment_link]'. "
-        "     DO NOT say 'sent via SMS' or 'link has been sent via SMS' because the user is interacting in an online chat and needs the link directly here.\n"
-        "  3. IF THE USER CHOOSES 'AFTER THAT' / 'LATER' / 'AT THE CLINIC': "
-        "     Call book_appointment to book the appointment. "
-        "     Confirm that the appointment is booked and inform them they can settle the payment in person after that when visiting the clinic.\n"
+        "- MANDATORY APPOINTMENT BOOKING, FEE CONFIRMATION & PAYMENT FLOW:\n"
+        "  1. WHEN A PATIENT SELECTS OR ASKS TO BOOK A SLOT:\n"
+        "     - Call check_consultation_fee with patient_id and service_code 'CONSULT' to check the fee.\n"
+        "     - State the exact fee amount to the patient and ask if they agree to proceed:\n"
+        "       'The consultation fee for your appointment with Dr. [Doctor] on [Date] at [Time] is [quote the exact fee from check_consultation_fee, e.g. $50.00 or $150.00]. Would you like to agree to this amount and confirm your booking?'\n"
+        "     - DO NOT book the slot until the patient explicitly agrees.\n"
+        "  2. IF THE PATIENT AGREES (e.g. 'yes', 'agree', 'proceed', 'sure', 'okay', 'pay now', 'confirm', 'book it'):\n"
+        "     - Call book_appointment to book the appointment slot.\n"
+        "     - Call create_invoice (service_code 'CONSULT') to generate the invoice.\n"
+        "     - Call generate_payment_link with that invoice_id to generate the Stripe payment link.\n"
+        "     - Confirm that the appointment is booked with the date, time, and doctor, and ALWAYS provide the full clickable payment link directly in your response:\n"
+        "       'Your appointment is confirmed for [Date] at [Time] with Dr. [Doctor]! Please complete your payment here: [paste exact URL returned by generate_payment_link]'\n"
+        "     - NEVER omit the payment link and NEVER say 'link sent via SMS' without including the full link right here.\n"
+        "  3. IF THE PATIENT DECLINES (e.g. 'no', 'decline', 'too expensive', 'cancel', 'don't want', 'nevermind'):\n"
+        "     - If the appointment was already booked or held, call cancel_appointment.\n"
+        "     - Inform the patient that the booking is cancelled and ask if they would like to reschedule for a different date/time or consult with another specialist:\n"
+        "       'Understood. The appointment has been cancelled. Would you like to reschedule for a different date or time, or consult with another doctor?'\n"
+        "  4. IF THE PATIENT ASKS TO RESCHEDULE:\n"
+        "     - Call check_available_slots to find open slots for their desired date or doctor.\n"
+        "     - Help them select a new slot and proceed with fee confirmation and booking.\n"
         "- CRITICAL: NEVER expose internal database IDs to the user in your responses. "
         "This includes doctor_id, patient_id, and any numeric database IDs returned by tools. "
         "These IDs are for internal tool use only. Only show the doctor's name, specialization, date, time, and appointment ID "
@@ -62,6 +72,7 @@ appointment_agent = create_agent(
         get_patient_appointments,
         cancel_appointment,
         reschedule_appointment,
+        check_consultation_fee,
         create_invoice,
         generate_payment_link,
     ],

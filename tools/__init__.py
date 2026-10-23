@@ -7,6 +7,7 @@ from .appointment_tools import (
     get_patient_appointments,
     cancel_appointment,
     reschedule_appointment,
+    check_consultation_fee,
 )
 from .insurance_tools import check_insurance_eligibility
 from .billing_tools import (
@@ -28,6 +29,7 @@ __all__ = [
     "get_patient_appointments",
     "cancel_appointment",
     "reschedule_appointment",
+    "check_consultation_fee",
     "check_insurance_eligibility",
     "create_invoice",
     "generate_payment_link",

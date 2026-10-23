@@ -35,16 +35,33 @@ def create_invoice(appointment_id: int, patient_id: int, service_code: str) -> s
             check_id, total_cents, insurer_cents, patient_cents = check_result
         else:
             check_id = None
-            price_query = "SELECT price_cents FROM service_prices WHERE service_code = %s;"
-            cursor.execute(price_query, (service_code,))
-            price_result = cursor.fetchone()
+            # Check if patient has active insurance policy for service
+            ins_query = """
+                SELECT ip.policy_id, sp.price_cents, cr.covered, cr.copay_cents, cr.coinsurance_percent
+                FROM insurance_policies ip
+                JOIN coverage_rules cr ON ip.plan_id = cr.plan_id
+                JOIN service_prices sp ON cr.service_code = sp.service_code
+                WHERE ip.patient_id = %s AND ip.is_active = 1 AND sp.service_code = %s;
+            """
+            cursor.execute(ins_query, (patient_id, service_code))
+            ins_row = cursor.fetchone()
+            if ins_row and ins_row[2] == 1:
+                pol_id, base_price, covered, copay, coinsurance = ins_row
+                actual_copay = min(copay, base_price)
+                patient_cents = actual_copay + ((base_price - actual_copay) * coinsurance // 100)
+                insurer_cents = base_price - patient_cents
+                total_cents = base_price
+            else:
+                price_query = "SELECT price_cents FROM service_prices WHERE service_code = %s;"
+                cursor.execute(price_query, (service_code,))
+                price_result = cursor.fetchone()
 
-            if not price_result:
-                return f"Error: Invalid service code {service_code}."
-        
-            total_cents = price_result[0]
-            insurer_cents = 0
-            patient_cents = total_cents
+                if not price_result:
+                    return f"Error: Invalid service code {service_code}."
+
+                total_cents = price_result[0]
+                insurer_cents = 0
+                patient_cents = total_cents
         
         idem_key = str(uuid.uuid4())
 
