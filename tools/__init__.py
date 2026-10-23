@@ -8,6 +8,12 @@ from .appointment_tools import (
     cancel_appointment,
     reschedule_appointment,
 )
+from .insurance_tools import check_insurance_eligibility
+from .billing_tools import (
+    create_invoice,
+    generate_payment_link,
+    check_invoice_payment_status,
+)
 
 __all__ = [
     "resolve_relative_date",
@@ -22,4 +28,8 @@ __all__ = [
     "get_patient_appointments",
     "cancel_appointment",
     "reschedule_appointment",
+    "check_insurance_eligibility",
+    "create_invoice",
+    "generate_payment_link",
+    "check_invoice_payment_status",
 ]

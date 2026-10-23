@@ -5,3 +5,5 @@ python-dotenv
 psycopg2
 langgraph
 pyscreeze
+stripe
+fastapi[standard]

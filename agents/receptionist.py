@@ -1,4 +1,4 @@
-"""Receptionist agent definition (includes the handoff tool to appointment agent)."""
+"""Receptionist agent definition (includes handoffs to appointment, insurance, and billing agents)."""
 
 import time
 from datetime import date
@@ -24,7 +24,6 @@ def handoff_to_appointment_agent(patient_id: int, request_details: str) -> str:
     Use this for ALL doctor lookups, slot checks, booking, rescheduling, canceling, and viewing
     appointments. The response from this tool IS the answer — relay it verbatim to the user
     without adding any commentary."""
-    # Import here to avoid circular imports (appointment_agent imports tools which imports config)
     from agents.appointment import appointment_agent
 
     start_time = time.perf_counter()
@@ -74,10 +73,25 @@ def handoff_to_appointment_agent(patient_id: int, request_details: str) -> str:
         return "Failed to process appointment request with the appointment agent. Please try again."
 
 
+def _get_handoff_to_insurance():
+    from agents.insurance import handoff_to_insurance
+    return handoff_to_insurance
+
+
+def _get_handoff_to_billing():
+    from agents.billing import handoff_to_billing
+    return handoff_to_billing
+
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 checkpointer = InMemorySaver()
 
 receptionist_agent = create_agent(
-    model=ChatGroq(model_name="openai/gpt-oss-20b", temperature=0),
+    model=ChatGroq(model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0),
     system_prompt=(
         f"{get_calendar_context()}\n\n"
         "You are a receptionist agent. "
@@ -85,15 +99,26 @@ receptionist_agent = create_agent(
         "If the phone number exists, greet the user. "
         "If not, use insert_patient to collect name, email, and phone number, and save them into the database. "
         "If the user wants to update name, email, or phone number, use update_patient_records tool. "
-        "Once a patient is registered or verified and you have their patient_id, if they ask about doctors, "
-        "available specializations, available slots, or booking, viewing, rescheduling, or canceling an appointment, "
-        "IMMEDIATELY call handoff_to_appointment_agent with their patient_id and full request details. "
-        "IMPORTANT: handoff_to_appointment_agent is a synchronous tool call - it runs the appointment agent and returns "
-        "the complete answer right now. Do NOT say things like 'I have forwarded your request' or "
-        "'our specialist will reach out'. Simply relay the tool's returned response directly to the user. "
+        "Once a patient is registered or verified and you have their patient_id:\n"
+        "- For doctors, specializations, slots, or booking/viewing/rescheduling/canceling appointments (including responses to payment preference questions such as 'right away', 'now', 'pay now', 'after that', 'later', 'at the clinic' during booking), "
+        "IMMEDIATELY call handoff_to_appointment_agent with their patient_id and full request details.\n"
+        "- For checking insurance coverage, eligibility, or copays (or if the user asks to BOTH check insurance and get a bill), "
+        "IMMEDIATELY call handoff_to_insurance with their patient_id and full request details (include appointment_id and service_code if mentioned).\n"
+        "- If the user asks to generate or view a bill/invoice, or asks to check payment status (e.g. 'is my payment done?', 'payment status') for an existing appointment, "
+        "IMMEDIATELY call handoff_to_billing with their patient_id and full request details.\n"
+        "IMPORTANT: All handoff tools are synchronous tool calls that return the complete answer right now. "
+        "Do NOT say 'I have forwarded your request'. Simply relay the tool's returned response directly to the user. "
+        "Never call more than one tool in a single turn. "
         "Never share the details of another person via a mobile number."
     ),
-    tools=[check_patients_exist, insert_patient, update_patient_records, handoff_to_appointment_agent],
+    tools=[
+        check_patients_exist,
+        insert_patient,
+        update_patient_records,
+        handoff_to_appointment_agent,
+        _get_handoff_to_insurance(),
+        _get_handoff_to_billing(),
+    ],
     checkpointer=checkpointer,
 )
 
