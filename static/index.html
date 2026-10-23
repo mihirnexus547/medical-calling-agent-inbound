@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediFlow AI | Autonomous Clinic Reception & Care Portal</title>
+  <meta name="description" content="AI-Powered Inbound Medical Receptionist, Dynamic Appointment Scheduling, Real-time Slot Explorer & Automated Stripe Payments.">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20100%22><text y=%22.9em%22 font-size=%2290%22>🩺</text></svg>">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="#" class="nav-brand">
+      <div class="brand-icon">🩺</div>
+      <div class="brand-text">
+        <h1>MediFlow AI</h1>
+        <span>Autonomous Healthcare Reception</span>
+      </div>
+    </a>
+
+    <ul class="nav-links">
+      <li class="nav-item">
+        <button class="active" data-view="chat" id="nav-chat-btn">
+          💬 AI Assistant
+        </button>
+      </li>
+      <li class="nav-item">
+        <button data-view="doctors" id="nav-doctors-btn">
+          👨‍⚕️ Doctor Directory
+        </button>
+      </li>
+      <li class="nav-item">
+        <button data-view="calendar" id="nav-calendar-btn">
+          📅 Visual Calendar
+        </button>
+      </li>
+      <li class="nav-item">
+        <button data-view="admin" id="nav-admin-btn">
+          📊 Clinic Admin
+        </button>
+      </li>
+    </ul>
+
+    <div class="nav-actions">
+      <div class="live-pill">
+        <div class="pulse-dot"></div>
+        <span>AI Agent Online</span>
+      </div>
+      <a href="http://localhost:8501" target="_blank" rel="noopener noreferrer" class="btn-secondary" title="Open Streamlit Staff Portal">
+        Open Streamlit UI ↗
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Banner & Real-Time Stats -->
+  <section class="hero">
+    <div class="hero-banner">
+      <div class="hero-content">
+        <h2>Intelligent Inbound Healthcare. <span>Zero Wait Time.</span></h2>
+        <p>Chat directly with our conversational AI receptionist to book specialist appointments, verify insurance eligibility, and complete payments securely via Stripe.</p>
+        <div class="hero-badges">
+          <div class="hero-badge">⚡ Model: <strong>Groq openai/gpt-oss-120b</strong></div>
+          <div class="hero-badge">🔒 Payments: <strong>Stripe Checkout 3D-Secure</strong></div>
+          <div class="hero-badge">🗄️ Database: <strong>PostgreSQL 14 (Synchronized)</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats Metrics -->
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-label">
+          <span>Registered Patients</span>
+          <span>👥</span>
+        </div>
+        <div class="stat-value" id="statPatients">--</div>
+        <div class="stat-sub">Verified clinic database records</div>
+      </div>
+
+      <div class="stat-card emerald">
+        <div class="stat-label">
+          <span>Active Bookings</span>
+          <span>📅</span>
+        </div>
+        <div class="stat-value" id="statBookings">--</div>
+        <div class="stat-sub">Confirmed upcoming appointments</div>
+      </div>
+
+      <div class="stat-card purple">
+        <div class="stat-label">
+          <span>Available Slots</span>
+          <span>⏰</span>
+        </div>
+        <div class="stat-value" id="statSlots">--</div>
+        <div class="stat-sub">Across 15 specialized departments</div>
+      </div>
+
+      <div class="stat-card amber">
+        <div class="stat-label">
+          <span>Paid Invoices</span>
+          <span>💳</span>
+        </div>
+        <div class="stat-value" id="statInvoices">--</div>
+        <div class="stat-sub">Automated Stripe reconciliation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main View Container -->
+  <main class="app-container">
+
+    <!-- ========================================================================
+         VIEW 1: AI PATIENT CHAT ASSISTANT
+         ======================================================================== -->
+    <section class="view-section active" id="view-chat">
+      <div class="chat-layout">
+        
+        <!-- Chat Main Area -->
+        <div class="chat-card">
+          <div class="chat-card-header">
+            <div class="chat-status-agent">
+              <div class="agent-avatar">🩺</div>
+              <div class="agent-info">
+                <h4>MediFlow AI Care Coordinator</h4>
+                <p><span class="pulse-dot"></span> Powered by Groq Multi-Agent Framework</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size: 11px; color: var(--text-dim);">Session: <strong id="threadIdDisplay" style="color: var(--primary-light);"></strong></span>
+              <button class="btn-secondary" id="chatResetBtn" title="Start new session">🔄 New Chat</button>
+            </div>
+          </div>
+
+          <!-- Messages Stream -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg-row bot">
+              <div class="msg-avatar">🩺</div>
+              <div class="msg-bubble">
+                <p>Hello! I am your <strong>MediFlow AI Receptionist</strong>. 👋</p>
+                <p>I can help you check doctor availability, schedule appointments, review your insurance copay, or send you a secure online payment link.</p>
+                <p><em>Please share your phone number to get started!</em></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="chat-input-bar">
+            <div class="chat-input-wrapper">
+              <input 
+                type="text" 
+                class="chat-input" 
+                id="chatInput" 
+                placeholder="Ask anything (e.g. 'Check Dr. Sharma slots next Wednesday' or 'I want to know doctor names and departments')..." 
+                autocomplete="off"
+              >
+              <button class="chat-send-btn" id="chatSendBtn" title="Send message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Sidebar / Quick Triggers -->
+        <aside class="chat-sidebar">
+          
+          <div class="sidebar-box">
+            <h4>⚡ Quick Prompts</h4>
+            <div class="prompt-chips">
+              <button class="prompt-chip" data-prompt="I want to know doctor name and their respective departments">
+                <span>👨‍⚕️</span> List all doctors & departments
+              </button>
+              <button class="prompt-chip" data-prompt="Check available slots for Dr. Sharma next Wednesday">
+                <span>📅</span> Check Dr. Sharma next Wednesday
+              </button>
+              <button class="prompt-chip" data-prompt="I want to book an appointment with Dr. Rajesh Mehta next Friday at 10 AM">
+                <span>🦴</span> Book Dr. Rajesh Mehta next Friday
+              </button>
+              <button class="prompt-chip" data-prompt="Check insurance eligibility for consultation">
+                <span>🛡️</span> Check my insurance copay
+              </button>
+              <button class="prompt-chip" data-prompt="What is the payment status for appointment 101?">
+                <span>💳</span> Check appointment payment status
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-box">
+            <h4>👤 Quick Test Profiles</h4>
+            <div class="profile-card" data-phone="787020112351">
+              <div class="profile-name">Aarav Patel</div>
+              <div class="profile-plan">Gold Plan (0% Coinsurance, $50 Copay)</div>
+              <div class="profile-phone">📱 787020112351</div>
+            </div>
+
+            <div class="profile-card" data-phone="919723118363">
+              <div class="profile-name">Mihir Bhavsar</div>
+              <div class="profile-plan">Gold Plan (Full Coverage)</div>
+              <div class="profile-phone">📱 919723118363</div>
+            </div>
+
+            <div class="profile-card" data-phone="7984134319">
+              <div class="profile-name">Harsh Panchal</div>
+              <div class="profile-plan">Bronze Plan ($60 Copay)</div>
+              <div class="profile-phone">📱 7984134319</div>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         VIEW 2: DOCTOR DIRECTORY
+         ======================================================================== -->
+    <section class="view-section" id="view-doctors">
+      <div class="section-header">
+        <div>
+          <h3>👨‍⚕️ Medical Specialists & Department Directory</h3>
+          <p>Explore board-certified doctors across 15 specialized clinics at MediFlow.</p>
+        </div>
+      </div>
+
+      <!-- Department Filter Pills -->
+      <div class="dept-filters" id="deptFilters"></div>
+
+      <!-- Doctors Card Grid -->
+      <div class="doctors-grid" id="doctorsGrid"></div>
+    </section>
+
+    <!-- ========================================================================
+         VIEW 3: VISUAL CALENDAR & REAL-TIME SLOT EXPLORER
+         ======================================================================== -->
+    <section class="view-section" id="view-calendar">
+      <div class="section-header">
+        <div>
+          <h3>📅 Appointment Schedule & Live Slot Explorer</h3>
+          <p>Select a physician and date to inspect available time slots in real time.</p>
+        </div>
+      </div>
+
+      <div class="slots-container">
+        
+        <!-- Controls Column -->
+        <div class="slots-control-card">
+          <div class="form-group">
+            <label for="doctorSelect">Select Physician</label>
+            <select id="doctorSelect" class="form-select"></select>
+          </div>
+
+          <div class="form-group">
+            <label for="dateInput">Select Date</label>
+            <input type="date" id="dateInput" class="form-input">
+            
+            <div class="quick-dates">
+              <button class="quick-date-btn" data-days="0">Today</button>
+              <button class="quick-date-btn" data-days="1">Tomorrow</button>
+              <button class="quick-date-btn" data-days="5">In 5 Days</button>
+              <button class="quick-date-btn" data-days="7">Next Week</button>
+            </div>
+          </div>
+
+          <div style="padding-top: 16px; border-top: 1px solid var(--border-glass);">
+            <div style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+              💡 <strong>Instant Booking:</strong> Clicking any open slot automatically starts the AI booking workflow with your chosen slot.
+            </div>
+          </div>
+        </div>
+
+        <!-- Slots Display Column -->
+        <div class="slots-display-card">
+          <div id="slotSummaryText" style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: 20px;">
+            Available consultation slots:
+          </div>
+
+          <div class="slot-group-title">🌅 Morning Consultations (09:00 - 12:00)</div>
+          <div class="slots-grid-time" id="morningSlots"></div>
+
+          <div class="slot-group-title" style="margin-top: 28px;">🌇 Afternoon Consultations (14:00 - 17:00)</div>
+          <div class="slots-grid-time" id="afternoonSlots"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         VIEW 4: CLINIC ADMIN & RECENT APPOINTMENTS
+         ======================================================================== -->
+    <section class="view-section" id="view-admin">
+      <div class="section-header">
+        <div>
+          <h3>📊 Clinic Activity & Appointment Oversight</h3>
+          <p>Live synchronized view of recent appointments and payments across PostgreSQL.</p>
+        </div>
+        <button class="btn-secondary" id="refreshAdminBtn">🔄 Refresh Data</button>
+      </div>
+
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Patient Name</th>
+              <th>Doctor & Department</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="apptsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>MediFlow AI Healthcare Practice Management • Built with FastAPI, LangGraph Multi-Agent, and Groq</p>
+    <p style="margin-top: 6px;">Connected to PostgreSQL database <code>patient_db</code> • Stripe Test Mode Integrated</p>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
