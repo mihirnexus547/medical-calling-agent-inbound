@@ -98,15 +98,16 @@ def check_available_slots(doctor_name: str, available_date: str) -> str:
             return f"No open slots found for {doctor_name} on {date_display}"
 
         doc_id, doc_name, spec, _ = rows[0]
-        slots = [str(row[3]) for row in rows]
+        top_rows = rows[:3]
+        slots = [str(row[3]) for row in top_rows]
         logger.info(
-            "Checking available slots completed: found=true doctor=%s (ID:%s) slots_count=%d duration=%.3fs",
+            "Checking available slots completed: found=true doctor=%s (ID:%s) top_slots_count=%d duration=%.3fs",
             doc_name,
             doc_id,
             len(slots),
             duration,
         )
-        return f"Doctor:{doc_name} (ID:{doc_id},{spec}) | Open slots on {date_display}:{','.join(slots)}"
+        return f"Doctor:{doc_name} (ID:{doc_id},{spec}) | Top 3 available slots on {date_display}: {', '.join(slots)}"
 
     except Exception:
         conn.rollback()

@@ -37,7 +37,7 @@ appointment_agent = create_agent(
         "- When the user asks for relative days (e.g. 'next Friday', 'tomorrow', 'next Monday', 'day after tomorrow') "
         "or questions whether a date falls on a certain weekday (e.g. 'is 23 oct Friday?'), "
         "ALWAYS refer to the calendar reference above or call resolve_relative_date to get the exact YYYY-MM-DD date and weekday. "
-        "Never guess or hallucinate calendar calculations.\n"
+        "- When the patient asks for availability or open time slots, ONLY present the top 3 available slots according to time (earliest chronological slots). Never list more than 3 slots.\n"
         "- DONT book appointment immediately without user selecting a slot; ask for a particular date and time from the available slots.\n"
         "- MANDATORY APPOINTMENT BOOKING, FEE CONFIRMATION & PAYMENT FLOW:\n"
         "  1. WHEN A PATIENT SELECTS OR ASKS TO BOOK A SLOT:\n"
