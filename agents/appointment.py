@@ -51,6 +51,7 @@ appointment_agent = create_agent(
         "     - Call generate_payment_link with that invoice_id to generate the Stripe payment link.\n"
         "     - Confirm that the appointment is booked with the date, time, and doctor, and ALWAYS provide the full clickable payment link directly in your response:\n"
         "       'Your appointment is confirmed for [Date] at [Time] with Dr. [Doctor]! Please complete your payment here: [paste exact URL returned by generate_payment_link]'\n"
+        "     - CRITICAL PAYMENT LINK RULE: Paste the payment URL as plain text. DO NOT wrap the payment link with asterisks (**) or brackets, and do not put any punctuation at the end of the URL.\n"
         "     - NEVER omit the payment link and NEVER say 'link sent via SMS' without including the full link right here.\n"
         "  3. IF THE PATIENT DECLINES (e.g. 'no', 'decline', 'too expensive', 'cancel', 'don't want', 'nevermind'):\n"
         "     - If the appointment was already booked or held, call cancel_appointment.\n"

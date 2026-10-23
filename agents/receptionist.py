@@ -170,16 +170,25 @@ class SafeReceptionistAgent:
                 last_content = handoff_content
                 last_msg.content = handoff_content
 
-            # Guarantee Stripe URL presence
+            # Guarantee Stripe URL presence and clean format
             stripe_url = None
             for m in reversed(res["messages"]):
                 content_str = str(getattr(m, "content", "") or "")
                 match = re.search(r"https://checkout\.stripe\.com[^\s\)\"'>]+", content_str)
                 if match:
-                    stripe_url = match.group(0)
+                    stripe_url = match.group(0).rstrip('*.,:;!?)<>\'\"')
                     break
-            if stripe_url and stripe_url not in last_content:
-                last_msg.content = f"{last_content}\n\n👉 **Payment Link:** {stripe_url}"
+
+            if stripe_url:
+                # Strip any trailing asterisks or markdown artifacts attached to the stripe link in last_content
+                last_content = re.sub(
+                    r"https://checkout\.stripe\.com[^\s\)\"'>]+",
+                    stripe_url,
+                    last_content,
+                )
+                if stripe_url not in last_content:
+                    last_content = f"{last_content}\n\n👉 **Payment Link:** {stripe_url}"
+                last_msg.content = last_content
         return res
 
     def __getattr__(self, name):

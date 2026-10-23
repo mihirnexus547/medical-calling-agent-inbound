@@ -301,18 +301,25 @@ function appendMessage(sender, text) {
 
 // Convert markdown text to HTML and inject dedicated Stripe Payment CTA if present
 function parseMarkdownAndLinks(text) {
-  let html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  // Detect Stripe Checkout URL
+  // 1. Detect and cleanly extract Stripe Checkout URL
   const stripeRegex = /(https:\/\/checkout\.stripe\.com\/[^\s\)\"'>]+)/g;
   let paymentUrl = null;
   const match = text.match(stripeRegex);
   if (match) {
-    paymentUrl = match[0];
+    // Strip any trailing markdown asterisks, punctuation, or brackets
+    paymentUrl = match[0].replace(/[\*.,:;!?\)<>'"&]+$/, '').trim();
   }
+
+  // 2. Clean up any trailing asterisks from the URL in the text itself
+  let cleanText = text;
+  if (paymentUrl) {
+    cleanText = cleanText.replace(/https:\/\/checkout\.stripe\.com\/[^\s\)\"'>]+/g, paymentUrl);
+  }
+
+  let html = cleanText
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
   // Bold & Italic
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -321,6 +328,16 @@ function parseMarkdownAndLinks(text) {
   // Bullet points
   html = html.replace(/^[-\*]\s+(.*)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+
+  // Convert raw Stripe URL in text to clean readable anchor
+  if (paymentUrl) {
+    const escapedUrl = paymentUrl.replace(/&/g, '&amp;');
+    const urlPattern = new RegExp(escapedUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    html = html.replace(
+      urlPattern,
+      `<a href="${paymentUrl}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline; font-weight: 600;">Open Stripe Checkout &rarr;</a>`
+    );
+  }
 
   // Line breaks to paragraphs
   const paragraphs = html.split('\n\n');

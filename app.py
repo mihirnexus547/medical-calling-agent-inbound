@@ -259,6 +259,10 @@ with tab_chat:
             else:
                 with st.chat_message("assistant", avatar="🩺"):
                     st.markdown(msg["content"])
+                    s_match = re.search(r"https://checkout\.stripe\.com[^\s\)\"'>]+", msg["content"])
+                    if s_match:
+                        s_url = s_match.group(0).rstrip('*.,:;!?)<>\'\"')
+                        st.link_button("💳 Pay Online Now via Stripe Checkout", s_url, type="primary")
 
         # Handle Quick Prompt Input or Chat Input
         user_prompt = st.chat_input("Type your message here (e.g., 'Check slots for Dr. Sharma next Friday')...")
@@ -293,6 +297,11 @@ with tab_chat:
                                 time.sleep(0.01)
 
                         st.write_stream(stream_tokens(bot_reply))
+                        s_match = re.search(r"https://checkout\.stripe\.com[^\s\)\"'>]+", bot_reply)
+                        if s_match:
+                            s_url = s_match.group(0).rstrip('*.,:;!?)<>\'\"')
+                            st.link_button("💳 Pay Online Now via Stripe Checkout", s_url, type="primary")
+
                         st.caption(f"⏱️ Response latency: {elapsed:.2f}s | Thread: {st.session_state.session_thread_id}")
 
                         st.session_state.chat_messages.append({"role": "assistant", "content": bot_reply})
