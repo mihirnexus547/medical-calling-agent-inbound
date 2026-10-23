@@ -114,6 +114,7 @@ _raw_receptionist_agent = create_agent(
         "IMMEDIATELY call handoff_to_insurance with their patient_id and full request details (include appointment_id and service_code if mentioned).\n"
         "IMPORTANT: All handoff tools are synchronous tool calls that return the complete answer. "
         "When a handoff tool returns, relay its message directly to the user. "
+        "When the user asks to know doctors, departments, or specializations, you MUST display the actual doctors and their departments. NEVER give a generic response without showing the doctors! "
         "CRITICAL PAYMENT LINK MANDATE: If any tool response contains a payment link or URL (such as https://checkout.stripe.com/...), "
         "you MUST include the complete, exact payment URL in your final message to the user. "
         "NEVER omit the payment URL, and NEVER say 'sent via SMS' without showing the full clickable payment link directly in your response! "
@@ -134,7 +135,10 @@ _raw_receptionist_agent = create_agent(
 
 
 class SafeReceptionistAgent:
-    """Wrapper that guarantees any Stripe payment URL generated in a turn is preserved in the final message."""
+    """Wrapper that guarantees:
+    1. Any Stripe payment URL generated in a turn is preserved in the final message.
+    2. Any doctor lists, slots, or handoff details are never dropped or truncated by the router.
+    """
 
     def __init__(self, raw_agent):
         self._raw_agent = raw_agent
@@ -144,6 +148,27 @@ class SafeReceptionistAgent:
         if isinstance(res, dict) and "messages" in res and res["messages"]:
             last_msg = res["messages"][-1]
             last_content = getattr(last_msg, "content", "") or ""
+
+            # Check if a handoff tool was executed in this turn
+            handoff_content = None
+            for m in reversed(res["messages"][:-1]):
+                m_name = getattr(m, "name", "") or ""
+                if m_name in (
+                    "handoff_to_appointment_agent",
+                    "handful_to_appointment_agent",
+                    "handoff_to_insurance",
+                    "handoff_to_billing",
+                ):
+                    handoff_content = getattr(m, "content", "")
+                    break
+
+            # If the receptionist LLM dropped the full list/content (e.g. only gave a short generic 1-liner),
+            # restore the complete handoff answer
+            if handoff_content and len(handoff_content.strip()) > len(last_content.strip()) * 2:
+                last_content = handoff_content
+                last_msg.content = handoff_content
+
+            # Guarantee Stripe URL presence
             stripe_url = None
             for m in reversed(res["messages"]):
                 content_str = str(getattr(m, "content", "") or "")

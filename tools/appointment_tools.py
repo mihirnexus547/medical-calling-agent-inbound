@@ -16,17 +16,13 @@ def list_doctors_and_specializations(specialization: Optional[str] = None) -> st
     logger.info("List doctors/specializations started: specialization=%s", specialization)
 
     try:
-        if not specialization:
-            cursor.execute("SELECT DISTINCT specialization FROM doctors;")
+        if not specialization or specialization.strip().lower() in ("all", "any", "none", "*", "doctors", "doctor"):
+            cursor.execute("SELECT id, name, specialization FROM doctors ORDER BY specialization, name;")
             rows = cursor.fetchall()
-            specialization_names = ",".join(row[0] for row in rows)
+            doctors_list = "\n".join(f"- {row[1]} ({row[2]}, ID:{row[0]})" for row in rows)
             duration = time.perf_counter() - start_time
-            logger.info(
-                "List specializations completed: count=%d duration=%.3fs",
-                len(rows),
-                duration,
-            )
-            return f"Specializations available:{specialization_names}"
+            logger.info("List all doctors completed: count=%d duration=%.3fs", len(rows), duration)
+            return f"All doctors and departments available:\n{doctors_list}"
 
         cursor.execute(
             "SELECT id, name FROM doctors WHERE specialization ILIKE %s;",
