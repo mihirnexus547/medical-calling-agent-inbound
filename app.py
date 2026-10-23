@@ -7,11 +7,24 @@ Includes:
 - Tab 3: Admin Database Center (Full CRUD for all tables)
 """
 
+import os
 import time
 from datetime import date, datetime, timedelta
+from dotenv import load_dotenv
 import pandas as pd
 import psycopg2
 import streamlit as st
+
+load_dotenv()
+
+# Initialize LangSmith Tracing
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "mca_multiagent_inbound")
+os.environ["LANGCHAIN_ENDPOINT"] = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+_ls_key = os.getenv("LANGCHAIN_API_KEY") or os.getenv("LANGSMITH_API_KEY")
+if _ls_key:
+    os.environ["LANGCHAIN_API_KEY"] = _ls_key
+    os.environ["LANGSMITH_API_KEY"] = _ls_key
 
 # Configure Page
 st.set_page_config(
