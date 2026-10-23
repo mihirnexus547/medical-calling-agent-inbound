@@ -64,6 +64,9 @@ const elements = {
   convAuthStatus: document.getElementById('convAuthStatus'),
   convAuthText: document.getElementById('convAuthText'),
   convLoginPromptBtn: document.getElementById('convLoginPromptBtn'),
+  chatLockedBanner: document.getElementById('chatLockedBanner'),
+  chatBannerLoginBtn: document.getElementById('chatBannerLoginBtn'),
+  chatInputWrapper: document.getElementById('chatInputWrapper'),
 };
 
 // ==============================================================================
@@ -115,12 +118,22 @@ function showToast(message, duration = 3000) {
 // AUTHENTICATION & USER PROFILE
 // ==============================================================================
 function initAuth() {
+  window.openAuthModal = openAuthModal;
+
   // Modal Open/Close
   if (elements.openAuthModalBtn) {
     elements.openAuthModalBtn.addEventListener('click', () => openAuthModal('login'));
   }
   if (elements.convLoginPromptBtn) {
     elements.convLoginPromptBtn.addEventListener('click', () => openAuthModal('login'));
+  }
+  if (elements.chatBannerLoginBtn) {
+    elements.chatBannerLoginBtn.addEventListener('click', () => openAuthModal('login'));
+  }
+  if (elements.chatInputWrapper) {
+    elements.chatInputWrapper.addEventListener('click', () => {
+      if (!state.token) openAuthModal('login');
+    });
   }
   if (elements.closeAuthModalBtn) {
     elements.closeAuthModalBtn.addEventListener('click', closeAuthModal);
@@ -312,7 +325,9 @@ async function verifyCurrentUser() {
 }
 
 function updateAuthUI() {
-  if (state.user && state.token) {
+  const isLoggedIn = !!(state.user && state.token);
+
+  if (isLoggedIn) {
     if (elements.openAuthModalBtn) elements.openAuthModalBtn.style.display = 'none';
     if (elements.userProfileBadge) elements.userProfileBadge.style.display = 'flex';
     if (elements.navUserName) elements.navUserName.textContent = state.user.name;
@@ -321,13 +336,37 @@ function updateAuthUI() {
       elements.convAuthText.textContent = `👤 ${state.user.name}`;
       elements.convLoginPromptBtn.style.display = 'none';
     }
+
+    if (elements.chatLockedBanner) elements.chatLockedBanner.style.display = 'none';
+    if (elements.chatInput) {
+      elements.chatInput.disabled = false;
+      elements.chatInput.placeholder = "Ask anything (e.g. 'Check Dr. Sharma slots next Wednesday' or 'I want to know doctor names and departments')...";
+    }
+    if (elements.chatInputWrapper) {
+      elements.chatInputWrapper.classList.remove('locked');
+    }
+    if (elements.chatSendBtn) {
+      elements.chatSendBtn.disabled = false;
+    }
   } else {
     if (elements.openAuthModalBtn) elements.openAuthModalBtn.style.display = 'inline-flex';
     if (elements.userProfileBadge) elements.userProfileBadge.style.display = 'none';
 
     if (elements.convAuthStatus) {
-      elements.convAuthText.textContent = '🔒 Guest Session (Not Saved)';
+      elements.convAuthText.textContent = '🔒 Guest Mode (Sign in to chat)';
       elements.convLoginPromptBtn.style.display = 'inline-block';
+    }
+
+    if (elements.chatLockedBanner) elements.chatLockedBanner.style.display = 'flex';
+    if (elements.chatInput) {
+      elements.chatInput.disabled = true;
+      elements.chatInput.placeholder = "🔒 Please sign in with email & password to chat with MediFlow AI...";
+    }
+    if (elements.chatInputWrapper) {
+      elements.chatInputWrapper.classList.add('locked');
+    }
+    if (elements.chatSendBtn) {
+      elements.chatSendBtn.disabled = true;
     }
   }
 }
@@ -511,23 +550,32 @@ async function loadConversationMessages(threadId) {
 }
 
 function resetChatMessagesView() {
-  const greeting = state.user 
-    ? `Hello <strong>${escapeHtml(state.user.name)}</strong>! Welcome back to MediFlow AI clinic.`
-    : `Hello! I am your <strong>MediFlow AI Receptionist</strong>. 👋`;
-
-  const instruction = state.user
-    ? `How can I assist you with your health consultations, doctor bookings, or invoices today?`
-    : `I can help you check doctor availability, schedule appointments, review your insurance copay, or send you a secure online payment link.<br><em>Please share your phone number to get started!</em>`;
-
-  elements.chatMessages.innerHTML = `
-    <div class="msg-row bot">
-      <div class="msg-avatar">🩺</div>
-      <div class="msg-bubble">
-        <p>${greeting}</p>
-        <p>${instruction}</p>
+  if (state.user) {
+    elements.chatMessages.innerHTML = `
+      <div class="msg-row bot">
+        <div class="msg-avatar">🩺</div>
+        <div class="msg-bubble">
+          <p>Hello <strong>${escapeHtml(state.user.name)}</strong>! Welcome to your personal consultation room. 👋</p>
+          <p>Your session is securely saved in PostgreSQL. How can I assist you with your health consultations, doctor bookings, or invoices today?</p>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  } else {
+    elements.chatMessages.innerHTML = `
+      <div class="msg-row bot">
+        <div class="msg-avatar">🩺</div>
+        <div class="msg-bubble">
+          <p>Welcome to <strong>MediFlow AI Healthcare Clinic</strong>! 👋</p>
+          <p>To start a consultation, schedule specialist appointments, or access your medical records, <strong>please sign in with your email and password</strong>.</p>
+          <div style="margin-top: 14px;">
+            <button class="btn-primary btn-sm" type="button" onclick="window.openAuthModal('login')">
+              <span>🔑 Patient Login / Sign Up &rarr;</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
 }
 
 // ==============================================================================
@@ -578,9 +626,14 @@ function initChat() {
     elements.newChatSidebarBtn.addEventListener('click', createNewChat);
   }
 
-  // Quick Prompt Chips
+  // Quick Prompt Chips (Require login)
   elements.promptChips.forEach(chip => {
     chip.addEventListener('click', () => {
+      if (!state.token) {
+        openAuthModal('login');
+        showToast('Please sign in to consult with MediFlow AI.');
+        return;
+      }
       const prompt = chip.dataset.prompt;
       if (prompt) {
         elements.chatInput.value = prompt;
@@ -592,6 +645,11 @@ function initChat() {
   // Quick Test Profile Cards
   elements.profileCards.forEach(card => {
     card.addEventListener('click', () => {
+      if (!state.token) {
+        openAuthModal('login');
+        showToast('Please sign in to chat.');
+        return;
+      }
       const phone = card.dataset.phone;
       if (phone) {
         elements.chatInput.value = `Hi, my phone is ${phone}`;
@@ -602,6 +660,12 @@ function initChat() {
 }
 
 async function handleSendMessage() {
+  if (!state.token) {
+    openAuthModal('login');
+    showToast('Please sign in to chat with the clinic agent.');
+    return;
+  }
+
   const text = elements.chatInput.value.trim();
   if (!text || state.isLoading) return;
 
@@ -876,6 +940,11 @@ function populateDoctorSelect(doctors) {
 }
 
 window.bookDoctorViaChat = function(doctorName) {
+  if (!state.token) {
+    openAuthModal('login');
+    showToast('Please sign in to book an appointment.');
+    return;
+  }
   switchView('chat');
   elements.chatInput.value = `I want to book an appointment with ${doctorName}`;
   handleSendMessage();
@@ -988,6 +1057,11 @@ function createSlotElement(slot) {
 
   if (!slot.is_booked) {
     btn.addEventListener('click', () => {
+      if (!state.token) {
+        openAuthModal('login');
+        showToast('Please sign in to book an appointment slot.');
+        return;
+      }
       const docName = elements.doctorSelect ? elements.doctorSelect.options[elements.doctorSelect.selectedIndex].text.split('(')[0].trim() : 'Doctor';
       switchView('chat');
       elements.chatInput.value = `I want to book an appointment with ${docName} on ${state.selectedDate} at ${displayTime}`;

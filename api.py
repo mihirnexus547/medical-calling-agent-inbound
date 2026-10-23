@@ -398,7 +398,12 @@ async def chat_endpoint(req: ChatRequest, authorization: Optional[str] = Header(
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     user = get_current_patient(req.token or authorization)
-    patient_id = int(user["sub"]) if user else None
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Patient login required. Please sign in with your email and password to chat.",
+        )
+    patient_id = int(user["sub"])
 
     # Track conversation in Postgres
     _update_conversation_meta(req.thread_id, patient_id, req.message)
@@ -410,12 +415,10 @@ async def chat_endpoint(req: ChatRequest, authorization: Optional[str] = Header(
             "callbacks": [AgentLoggingCallback()],
         }
 
-        agent_input = req.message.strip()
-        if user:
-            agent_input = (
-                f"[Context: Verified Patient ID={user['id']}, Name={user['name']}, Phone={user['phone']}] "
-                f"{req.message.strip()}"
-            )
+        agent_input = (
+            f"[Context: Verified Patient ID={user['id']}, Name={user['name']}, Phone={user['phone']}] "
+            f"{req.message.strip()}"
+        )
 
         res = receptionist_agent.invoke(
             {"messages": [{"role": "user", "content": agent_input}]},
@@ -437,6 +440,7 @@ async def chat_endpoint(req: ChatRequest, authorization: Optional[str] = Header(
 async def chat_stream_endpoint(req: ChatRequest, authorization: Optional[str] = Header(None)):
     """Streaming endpoint for receptionist agent using Server-Sent Events (SSE).
     Persists multi-agent conversations in PostgreSQL via PostgresSaver.
+    Requires authenticated patient.
     """
     from agents.receptionist import receptionist_agent
     from agents.callbacks import AgentLoggingCallback
@@ -445,7 +449,12 @@ async def chat_stream_endpoint(req: ChatRequest, authorization: Optional[str] = 
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     user = get_current_patient(req.token or authorization)
-    patient_id = int(user["sub"]) if user else None
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Patient login required. Please sign in with your email and password to chat.",
+        )
+    patient_id = int(user["sub"])
 
     # Update conversation thread metadata in Postgres
     _update_conversation_meta(req.thread_id, patient_id, req.message)

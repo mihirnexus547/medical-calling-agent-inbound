@@ -185,7 +185,18 @@
 
           <!-- Chat Input -->
           <div class="chat-input-bar">
-            <div class="chat-input-wrapper">
+            <!-- Patient Auth Required Notification Banner -->
+            <div class="chat-locked-banner" id="chatLockedBanner" style="display: none;">
+              <div class="chat-locked-banner-left">
+                <span style="font-size: 18px;">🔒</span>
+                <span><strong>Patient Login Required:</strong> Sign in with email & password to consult with MediFlow AI and save your chat history.</span>
+              </div>
+              <button class="btn-primary btn-sm" id="chatBannerLoginBtn" type="button">
+                <span>🔑 Patient Sign In</span>
+              </button>
+            </div>
+
+            <div class="chat-input-wrapper" id="chatInputWrapper">
               <input 
                 type="text" 
                 class="chat-input" 
