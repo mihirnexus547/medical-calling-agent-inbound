@@ -17,18 +17,15 @@ def get_chat_llm(temperature: float = 0.1):
 
     primary_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     fallback_model = os.getenv("GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b")
-    max_tokens = int(os.getenv("GROQ_MAX_TOKENS", 1024))
 
     primary = ChatGroq(
         model_name=primary_model,
         temperature=temperature,
-        max_tokens=max_tokens,
         max_retries=0,
     )
     fallback = ChatGroq(
         model_name=fallback_model,
         temperature=temperature,
-        max_tokens=max_tokens,
     )
     return primary.with_fallbacks([fallback])
 
